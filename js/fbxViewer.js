@@ -140,7 +140,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
             
             // Clamp zoom limits
-            zoomFactor = Math.max(1, Math.min(20, zoomFactor));
+            zoomFactor = Math.max(0.001, Math.min(50, zoomFactor));
             
             // Apply the new zoom level
             updateOrthoCamera();
@@ -166,16 +166,16 @@ document.addEventListener('DOMContentLoaded', async function() {
         camera.panningAxis = new BABYLON.Vector3(1, 1, 0); // Only allow panning in X and Y
         
         // Create a simple ground
-        const ground = BABYLON.MeshBuilder.CreateGround('ground', {width: 50, height: 50}, scene);
-        const groundMaterial = new BABYLON.StandardMaterial('groundMat', scene);
-        groundMaterial.diffuseColor = new BABYLON.Color3(0.2, 0.2, 0.2);
-        groundMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
-        groundMaterial.alpha = 0; // Make the ground transparent
-        ground.material = groundMaterial;
-        ground.position.y = 0;
+        // const ground = BABYLON.MeshBuilder.CreateGround('ground', {width: 50, height: 50}, scene);
+        // const groundMaterial = new BABYLON.StandardMaterial('groundMat', scene);
+        // groundMaterial.diffuseColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+        // groundMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+        // groundMaterial.alpha = 0; // Make the ground transparent
+        // ground.material = groundMaterial;
+        // ground.position.y = 0;
         
         // Try to load the character model
-        await loadCharacterModel();
+      //  await loadCharacterModel();
         
         // Create camera adjustment UI
         createCameraControls();
@@ -186,6 +186,67 @@ document.addEventListener('DOMContentLoaded', async function() {
         return scene;
     };
     
+    // Add this after the createScene function but before the event listeners
+
+    function replaceCharacter(container) {
+        if (!scene) return;
+
+        // Clear previous character completely
+        if (window.currentCharacter) {
+            // Stop and dispose all animations
+            scene.animationGroups.slice().forEach(group => {
+                group.stop();
+                group.dispose();
+            });
+            
+            // Remove all meshes related to current character
+            scene.meshes.slice().forEach(mesh => {
+                if (mesh !== scene.ground) { // Keep the ground
+                    mesh.dispose();
+                }
+            });
+
+            // Clear any skeletons
+            scene.skeletons.slice().forEach(skeleton => {
+                skeleton.dispose();
+            });
+
+            window.currentCharacter = null;
+            window.currentAnimationGroup = null;
+        }
+
+        // Add new meshes and animations
+        container.addAllToScene();
+        window.currentCharacter = container.meshes[0];
+        window.animationGroups = container.animationGroups;
+        
+        // Position the new character
+        window.currentCharacter.position = new BABYLON.Vector3(0, 0, 0);
+        window.currentCharacter.rotation = new BABYLON.Vector3(0, Math.PI/2, 0);
+        window.currentCharacter.scaling = new BABYLON.Vector3(1, 1, 1);
+
+        // Update animation list
+        const animationList = document.getElementById('animationList');
+        animationList.innerHTML = '';
+        container.animationGroups.forEach((group, index) => {
+            const option = document.createElement('option');
+            option.value = index;
+            option.text = group.name;
+            animationList.appendChild(option);
+        });
+
+        // Play first animation if available
+        if (container.animationGroups.length > 0) {
+            window.currentAnimationGroup = container.animationGroups[0];
+            window.currentAnimationGroup.start(true);
+        }
+
+        return window.currentCharacter;
+    }
+
+    // Make the function globally accessible
+    window.replaceCharacter = replaceCharacter;
+
     // Function to try loading the character model with fallbacks
     async function loadCharacterModel() {
         showStatus("Loading character model...");
