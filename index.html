@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Character Viewer - With Sprite Sheet Generator</title>
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+        #controlPanel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            color: white;
+            font-family: Arial, sans-serif;
+            z-index: 100;
+        }
+        #statusBar {
+            position: absolute;
+            bottom: 10px;
+            left: 0;
+            right: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            z-index: 100;
+        }
+        button {
+            margin: 5px;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+        select {
+            margin: 5px;
+            padding: 5px;
+            width: 100%;
+        }
+        .error {
+            color: #ff6b6b;
+        }
+        .info {
+            color: #6bff6b;
+        }
+        #spriteSheetPanel {
+            position: absolute;
+            top: 150px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            color: white;
+            font-family: Arial, sans-serif;
+            z-index: 100;
+        }
+        
+        label {
+            display: block;
+            margin-top: 5px;
+        }
+        
+        input {
+            width: 60px;
+            margin: 2px 0;
+        }
+        
+        #recordBtn {
+            margin-top: 10px;
+            width: 100%;
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        
+        #recordBtn:disabled {
+            background-color: #7f8c8d;
+            cursor: not-allowed;
+        }
+    </style>
+    <!-- BabylonJS and loaders -->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+</head>
+<body>
+    <canvas id="renderCanvas"></canvas>
+    <div id="controlPanel">
+        <h3>Animation Controls</h3>
+        <select id="animationList"></select>
+        <button id="playBtn">Play</button>
+        <button id="pauseBtn">Pause</button>
+    </div>
+    
+    <div id="spriteSheetPanel">
+        <h3>Sprite Sheet Generator</h3>
+        <label for="framesInput">Number of frames:</label>
+        <input type="number" id="framesInput" min="1" max="64" value="16">
+        
+        <label for="columnsInput">Columns:</label>
+        <input type="number" id="columnsInput" min="1" max="16" value="4">
+        
+        <button id="recordBtn">Record Sprite Sheet</button>
+    </div>
+    
+    <div id="statusBar">
+        <span id="statusMessage">Loading...</span>
+    </div>
+    
+    <script src="js/SpriteSheetHelper.js"></script>
+    <script src="js/fbxViewer.js"></script>
+    
+    <!-- Add compatibility check -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if SpriteSheetHelper exists and browser supports required features
+            if (typeof SpriteSheetHelper !== 'undefined') {
+                if (!SpriteSheetHelper.checkCompatibility()) {
+                    // Display warning about sprite sheet functionality
+                    const spriteSheetPanel = document.getElementById('spriteSheetPanel');
+                    if (spriteSheetPanel) {
+                        const warning = document.createElement('div');
+                        warning.innerHTML = "⚠️ Your browser may have limited support for sprite sheet generation.";
+                        warning.style.color = "#ffcc00";
+                        warning.style.marginTop = "10px";
+                        warning.style.fontSize = "12px";
+                        spriteSheetPanel.appendChild(warning);
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
