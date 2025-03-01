@@ -49,7 +49,7 @@ A comprehensive tool for viewing 3D character models, creating sprite sheets, an
 *Generated sprite sheet with 64 frames arranged in a 8x8 grid.*
 
 ### Exported GIF Animation
-![Example Animation](sprites/character.gif)
+![Example Animation](sprites/character.gif) ![Example Animation](sprites/creature.gif)
 
 *The resulting smooth animation exported as a GIF file.*
 
@@ -59,15 +59,6 @@ A comprehensive tool for viewing 3D character models, creating sprite sheets, an
 1. Clone or download this repository
 2. No build step required - it runs directly in the browser
 3. For local development, use a web server to serve the files
-
-### Using the Model Viewer
-1. Place your 3D character model in the `/models` folder:
-   - Name it either `character.glb` or `character.fbx`
-   - GLB is preferred for better compatibility
-2. Open `index.html` in your browser
-3. The model will be loaded automatically
-4. Use the dropdown to select different animations
-5. Use camera controls to position the model as desired
 
 ### Creating Sprite Sheets
 1. Load your model and select the desired animation
@@ -86,16 +77,17 @@ A comprehensive tool for viewing 3D character models, creating sprite sheets, an
 
 ### Viewing & Exporting Animations
 1. Open `sheet-animation.html` in your browser
-2. Your sprite sheet will be loaded automatically if placed in `/sprites/character.png`
-3. Use play/pause controls to preview the animation
-4. Adjust playback speed using the slider
-5. Configure GIF export settings:
-   - FPS: Frames per second
-   - Scale: Size multiplier
-   - Loop: Whether the GIF should repeat
-   - Quality: Lower values = smaller file size
-6. Click "Generate GIF"
-7. Preview the GIF and click "Download GIF" to save it
+2. Click "Load Sprite Sheet" and select your PNG file
+3. Load the corresponding metadata JSON file
+4. Use play/pause controls to preview the animation
+5. Adjust playback speed using the slider
+6. Configure GIF export settings:
+  - FPS: Frames per second
+  - Scale: Size multiplier
+  - Loop: Whether the GIF should repeat
+  - Quality: Lower values = smaller file size
+7. Click "Generate GIF"
+8. Preview the GIF and click "Download GIF" to save it
 
 ## File Structure
 
