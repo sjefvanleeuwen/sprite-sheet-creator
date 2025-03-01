@@ -464,8 +464,78 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    /**
+     * Analyze a frame to find its content bounds (non-transparent areas)
+     * @param {HTMLImageElement} frame - The frame image to analyze
+     * @returns {Object} - The content bounds {left, top, right, bottom, width, height}
+     */
+    function analyzeFrameContent(frame) {
+        // Create a temporary canvas for analysis
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCanvas.width = frame.width;
+        tempCanvas.height = frame.height;
+        
+        // Draw the frame on the temp canvas
+        tempCtx.drawImage(frame, 0, 0);
+        
+        // Get the pixel data
+        const pixelData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height).data;
+        
+        // Find content boundaries
+        let left = frame.width;
+        let top = frame.height;
+        let right = 0;
+        let bottom = 0;
+        let foundContent = false;
+        
+        // Analyze the pixel data to find content bounds
+        for (let y = 0; y < frame.height; y++) {
+            for (let x = 0; x < frame.width; x++) {
+                const pixelIndex = (y * frame.width + x) * 4;
+                // Check pixel alpha (non-transparent)
+                if (pixelData[pixelIndex + 3] > 10) { // Alpha threshold
+                    left = Math.min(left, x);
+                    top = Math.min(top, y);
+                    right = Math.max(right, x);
+                    bottom = Math.max(bottom, y);
+                    foundContent = true;
+                }
+            }
+        }
+        
+        // Fallback if no content found
+        if (!foundContent) {
+            return {
+                left: 0,
+                top: 0,
+                right: frame.width - 1,
+                bottom: frame.height - 1,
+                width: frame.width,
+                height: frame.height
+            };
+        }
+        
+        // Add a small margin for better appearance
+        const margin = 5;
+        left = Math.max(0, left - margin);
+        top = Math.max(0, top - margin);
+        right = Math.min(frame.width - 1, right + margin);
+        bottom = Math.min(frame.height - 1, bottom + margin);
+        
+        return {
+            left: left,
+            top: top,
+            right: right,
+            bottom: bottom,
+            width: right - left + 1,
+            height: bottom - top + 1
+        };
+    }
+    
+    // Replace the createSpriteSheet function with this optimized version
     function createSpriteSheet() {
-        showStatus("Creating sprite sheet...");
+        showStatus("Creating sprite sheet with optimized spacing...");
         
         // Get parameters
         const numFrames = recordedFrames.length;
@@ -475,28 +545,78 @@ document.addEventListener('DOMContentLoaded', function() {
         // Calculate rows needed
         const numRows = Math.ceil(numFrames / numColumns);
         
-        // Determine frame size - assuming all frames are the same size
-        const frameWidth = recordedFrames[0].width;
-        const frameHeight = recordedFrames[0].height;
+        // Analyze each frame to find content bounds
+        const frameBounds = recordedFrames.map(frame => analyzeFrameContent(frame));
+        
+        // Find maximum content dimensions to use as frame size
+        let maxContentWidth = 0;
+        let maxContentHeight = 0;
+        
+        frameBounds.forEach(bounds => {
+            maxContentWidth = Math.max(maxContentWidth, bounds.width);
+            maxContentHeight = Math.max(maxContentHeight, bounds.height);
+        });
+        
+        // Add a small padding between frames
+        const framePadding = 2;
+        const frameWidth = maxContentWidth + framePadding * 2;
+        const frameHeight = maxContentHeight + framePadding * 2;
         
         // Set the capture canvas size
         captureCanvas.width = frameWidth * numColumns;
         captureCanvas.height = frameHeight * numRows;
         
-        // Clear the canvas
+        // Clear the canvas with transparent background
         captureContext.clearRect(0, 0, captureCanvas.width, captureCanvas.height);
         
-        // Draw each frame to the sprite sheet
+        // Draw each frame onto the sprite sheet with centered content
         for (let i = 0; i < numFrames; i++) {
             const row = Math.floor(i / numColumns);
             const col = i % numColumns;
-            const x = col * frameWidth;
-            const y = row * frameHeight;
             
-            captureContext.drawImage(recordedFrames[i], x, y, frameWidth, frameHeight);
+            // Calculate target position on sprite sheet
+            const targetX = col * frameWidth;
+            const targetY = row * frameHeight;
+            
+            // Get the frame and its bounds
+            const frame = recordedFrames[i];
+            const bounds = frameBounds[i];
+            
+            // Calculate centering offsets
+            const offsetX = Math.floor((frameWidth - bounds.width) / 2);
+            const offsetY = Math.floor((frameHeight - bounds.height) / 2);
+            
+            // Draw the content portion of the frame centered in its cell
+            captureContext.drawImage(
+                frame,
+                bounds.left, bounds.top, bounds.width, bounds.height,
+                targetX + offsetX, targetY + offsetY, bounds.width, bounds.height
+            );
+            
+            // Optional: Draw frame borders for debugging
+            // captureContext.strokeStyle = 'rgba(0, 255, 0, 0.5)';
+            // captureContext.strokeRect(targetX, targetY, frameWidth, frameHeight);
         }
         
-        // Create a downloadable link
+        // Save sprite sheet metadata for later use
+        const metadata = {
+            frameWidth: frameWidth,
+            frameHeight: frameHeight,
+            frames: numFrames,
+            columns: numColumns,
+            rows: numRows,
+            animationName: currentAnimationGroup.name,
+            padding: framePadding,
+            optimized: true,
+            cropData: {
+                left: frameBounds[0].left,
+                top: frameBounds[0].top,
+                width: maxContentWidth,
+                height: maxContentHeight
+            }
+        };
+        
+        // Create downloadable sprite sheet image
         const dataURL = captureCanvas.toDataURL('image/png');
         const downloadLink = document.createElement('a');
         downloadLink.href = dataURL;
@@ -505,11 +625,22 @@ document.addEventListener('DOMContentLoaded', function() {
         downloadLink.click();
         document.body.removeChild(downloadLink);
         
+        // Create downloadable metadata JSON
+        const metadataBlob = new Blob([JSON.stringify(metadata, null, 2)], {type: 'application/json'});
+        const metadataURL = URL.createObjectURL(metadataBlob);
+        const metadataLink = document.createElement('a');
+        metadataLink.href = metadataURL;
+        metadataLink.download = `${currentAnimationGroup.name}_metadata.json`;
+        document.body.appendChild(metadataLink);
+        metadataLink.click();
+        document.body.removeChild(metadataLink);
+        URL.revokeObjectURL(metadataURL);
+        
         // Re-enable record button
         recordBtn.disabled = false;
         recordBtn.textContent = "Record Sprite Sheet";
         
-        showStatus(`Sprite sheet created with ${numFrames} frames (${numColumns} columns x ${numRows} rows)`);
+        showStatus(`Optimized sprite sheet created with ${numFrames} frames - Size: ${frameWidth}x${frameHeight} pixels per frame`);
     }
     
     // Create and set up the scene

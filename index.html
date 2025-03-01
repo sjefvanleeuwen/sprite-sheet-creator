@@ -114,7 +114,16 @@
         <label for="columnsInput">Columns:</label>
         <input type="number" id="columnsInput" min="1" max="16" value="4">
         
+        <!-- Add the optimization toggle -->
+        <div style="display: flex; align-items: center; margin-top: 5px;">
+            <input type="checkbox" id="optimizeInput" checked style="width: auto; margin-right: 5px;">
+            <label for="optimizeInput">Optimize frame spacing</label>
+        </div>
+        
         <button id="recordBtn">Record Sprite Sheet</button>
+        <div style="font-size: 11px; margin-top: 8px; color: #aaa;">
+            Optimization reduces empty space and centers character in each frame
+        </div>
     </div>
     
     <div id="statusBar">
