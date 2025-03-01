@@ -22,11 +22,28 @@ document.addEventListener('DOMContentLoaded', function() {
     const captureCanvas = document.createElement('canvas');
     const captureContext = captureCanvas.getContext('2d');
     
+    // Fix the scroll wheel to zoom functionality with a direct implementation
+    let zoomFactor = 5; // Initial orthographic zoom level
+    
     // Display status messages to the user
     function showStatus(message, isError = false) {
         statusElement.textContent = message;
         statusElement.className = isError ? 'error' : 'info';
         console.log(isError ? 'ERROR: ' : 'INFO: ', message);
+    }
+    
+    /**
+     * Updates orthographic camera settings based on zoom factor
+     * This keeps the orthographic view consistent with zoom level
+     */
+    function updateOrthoCamera() {
+        if (!camera) return;
+        
+        const aspectRatio = engine.getAspectRatio(camera);
+        camera.orthoTop = zoomFactor;
+        camera.orthoBottom = -zoomFactor;
+        camera.orthoLeft = -zoomFactor * aspectRatio;
+        camera.orthoRight = zoomFactor * aspectRatio;
     }
     
     // Create the scene
@@ -48,15 +65,47 @@ document.addEventListener('DOMContentLoaded', function() {
         // Use Math.PI/2 for the alpha value to position camera on the side
         camera = new BABYLON.ArcRotateCamera(
             'camera', 
-            Math.PI/2,    // Alpha - horizontal rotation (PI/2 for side view)
-            Math.PI/3,    // Beta - vertical rotation (PI/3 for elevated angle)
-            15,          // Radius - distance from target
+            Math.PI/2,    // Alpha: side view
+            Math.PI/3,    // Beta: elevated angle
+            15,           // Initial radius
             new BABYLON.Vector3(0, 1, 0),  // Target point
             scene
         );
-        
-        // Use orthographic camera for true 2D side view
         camera.mode = BABYLON.Camera.ORTHOGRAPHIC_CAMERA;
+        
+        // Enable wheel (remove any existing wheel limitations)
+        camera.useFramingBehavior = false;
+        camera.panningSensibility = 100; // Lower = more sensitive panning
+        
+        // Set initial orthographic view size
+        updateOrthoCamera();
+        
+        // Add this simple direct event listener for wheel scrolling
+        canvas.addEventListener("wheel", function(event) {
+            event.preventDefault();
+            
+            // Adjust zoom factor based on wheel direction
+            if (event.deltaY < 0) {
+                // Zoom in
+                zoomFactor *= 0.9; 
+            } else {
+                // Zoom out
+                zoomFactor *= 1.1;
+            }
+            
+            // Clamp zoom limits
+            zoomFactor = Math.max(1, Math.min(20, zoomFactor));
+            
+            // Apply the new zoom level
+            updateOrthoCamera();
+            
+            // Display the zoom level for debugging
+            showStatus(`Zoom level: ${zoomFactor.toFixed(1)}x`);
+        });
+        
+        // Remove the rigid locking and instead allow zooming:
+        camera.lowerRadiusLimit = 5;    // Minimum zoom-in distance
+        camera.upperRadiusLimit = 50;   // Maximum zoom-out distance
         
         // Set orthographic scale based on screen size
         const aspectRatio = engine.getAspectRatio(camera);
@@ -65,11 +114,6 @@ document.addEventListener('DOMContentLoaded', function() {
         camera.orthoBottom = -orthoSize;
         camera.orthoLeft = -orthoSize * aspectRatio;
         camera.orthoRight = orthoSize * aspectRatio;
-        
-        // Limit camera controls
-        camera.lowerRadiusLimit = camera.upperRadiusLimit = camera.radius;
-        camera.lowerAlphaLimit = camera.upperAlphaLimit = camera.alpha;
-        camera.lowerBetaLimit = camera.upperBetaLimit = camera.beta;
         
         // Allow limited panning for better viewing
         camera.panningSensibility = 50;
@@ -500,16 +544,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Handle window resize
         window.addEventListener('resize', () => {
             engine.resize();
-            
-            // Update orthographic camera settings on resize
-            if (camera) {
-                const aspectRatio = engine.getAspectRatio(camera);
-                const orthoSize = 5;
-                camera.orthoTop = orthoSize;
-                camera.orthoBottom = -orthoSize;
-                camera.orthoLeft = -orthoSize * aspectRatio;
-                camera.orthoRight = orthoSize * aspectRatio;
-            }
+            updateOrthoCamera(); // Update orthographic settings on resize
         });
     });
 });
