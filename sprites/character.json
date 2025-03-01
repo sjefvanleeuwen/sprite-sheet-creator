@@ -1,0 +1,16 @@
+{
+  "frameWidth": 256,
+  "frameHeight": 256,
+  "frames": 16,
+  "columns": 4,
+  "rows": 4,
+  "animationName": "character_walk",
+  "optimized": true,
+  "transparent": true,
+  "fps": 24,
+  "date": "2023-07-20T12:00:00.000Z",
+  "optimizationInfo": {
+    "note": "Frames are centered within fixed-size cells",
+    "maintainsExactDimensions": true
+  }
+}
