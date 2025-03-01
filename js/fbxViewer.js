@@ -34,6 +34,11 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log(isError ? 'ERROR: ' : 'INFO: ', message);
     }
     
+    // Add camera adjustment variables
+    let cameraOffsetX = 0;
+    let cameraOffsetY = 0;
+    const cameraAdjustStep = 0.25; // How much to move the camera per adjustment
+    
     /**
      * Updates orthographic camera settings based on zoom factor
      * This keeps the orthographic view consistent with zoom level
@@ -50,6 +55,34 @@ document.addEventListener('DOMContentLoaded', function() {
         camera.orthoBottom = -zoomFactor;
         camera.orthoLeft = -zoomFactor; // Same as vertical for 1:1 ratio
         camera.orthoRight = zoomFactor;  // Same as vertical for 1:1 ratio
+        
+        // Apply camera position offsets by moving the target
+        if (camera.target) {
+            // Create a new target vector with the offsets applied
+            const newTarget = new BABYLON.Vector3(
+                cameraOffsetX,
+                1 + cameraOffsetY, // Add 1 to keep at approximate character height
+                0
+            );
+            camera.setTarget(newTarget);
+        }
+    }
+    
+    // Add these functions for camera adjustment
+    function adjustCameraPosition(directionX, directionY) {
+        cameraOffsetX += directionX * cameraAdjustStep;
+        cameraOffsetY += directionY * cameraAdjustStep;
+        updateOrthoCamera();
+        
+        // Update status to show camera position
+        showStatus(`Camera offset: X=${cameraOffsetX.toFixed(2)}, Y=${cameraOffsetY.toFixed(2)}`);
+    }
+    
+    function resetCameraPosition() {
+        cameraOffsetX = 0;
+        cameraOffsetY = 0;
+        updateOrthoCamera();
+        showStatus("Camera position reset");
     }
     
     // Create the scene
@@ -144,6 +177,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Try to load the character model
         await loadCharacterModel();
         
+        // Create camera adjustment UI
+        createCameraControls();
+        
         return scene;
     };
     
@@ -168,7 +204,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Final fallback - create a simple character
                 createFallbackCharacter();
-                showStatus("Using fallback character. Please place a valid model file in the models folder.", true);
+                showStatus("Using fallback character. Please place a valid model in the models folder.", true);
             }
         }
     }
@@ -333,6 +369,10 @@ document.addEventListener('DOMContentLoaded', function() {
             showStatus("The model has no animations. Creating a simple animation.", true);
             createDefaultAnimation();
         }
+        
+        // Reset camera position when loading a new model
+        cameraOffsetX = 0;
+        cameraOffsetY = 0;
         
         // Set the camera to look at the character's upper body
         if (camera) {
@@ -728,7 +768,11 @@ document.addEventListener('DOMContentLoaded', function() {
             animationName: currentAnimationGroup.name.replace(/[^\w\s-]/g, '_'),  // Sanitize for filename
             optimized: shouldOptimize,
             date: new Date().toISOString(),
-            transparent: true
+            transparent: true,
+            cameraPosition: {
+                offsetX: cameraOffsetX,
+                offsetY: cameraOffsetY
+            }
         };
         
         // If optimized, add optimization data
@@ -765,6 +809,173 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Update status message with exact dimensions used
         showStatus(`Sprite sheet created with ${numFrames} frames - Exact cell size: ${cellWidth}x${cellHeight}px`);
+    }
+    
+    // Create camera adjustment UI in the createScene function
+    function createCameraControls() {
+        // Create a container for camera controls
+        const cameraControlPanel = document.createElement('div');
+        cameraControlPanel.id = 'cameraControlPanel';
+        cameraControlPanel.className = 'control-panel';
+        cameraControlPanel.style.position = 'absolute';
+        cameraControlPanel.style.left = '10px';
+        cameraControlPanel.style.top = '10px';
+        cameraControlPanel.style.backgroundColor = 'rgba(0,0,0,0.7)';
+        cameraControlPanel.style.borderRadius = '5px';
+        cameraControlPanel.style.padding = '10px';
+        cameraControlPanel.style.color = 'white';
+        cameraControlPanel.style.zIndex = '100';
+        cameraControlPanel.style.display = 'flex';
+        cameraControlPanel.style.flexDirection = 'column';
+        cameraControlPanel.style.alignItems = 'center';
+        
+        // Add a title
+        const title = document.createElement('div');
+        title.textContent = 'Camera Position';
+        title.style.marginBottom = '10px';
+        title.style.fontWeight = 'bold';
+        cameraControlPanel.appendChild(title);
+        
+        // Create a grid for direction buttons
+        const controlGrid = document.createElement('div');
+        controlGrid.style.display = 'grid';
+        controlGrid.style.gridTemplateColumns = '1fr 1fr 1fr';
+        controlGrid.style.gridTemplateRows = '1fr 1fr 1fr';
+        controlGrid.style.gap = '3px';
+        
+        // Create buttons for different directions
+        const buttonStyle = 'width:32px; height:32px; background:#444; border:none; color:white; cursor:pointer; border-radius:4px; font-weight:bold;';
+        
+        // Top row
+        const btnEmpty1 = document.createElement('button');
+        btnEmpty1.style = buttonStyle;
+        btnEmpty1.style.visibility = 'hidden';
+        
+        const btnUp = document.createElement('button');
+        btnUp.innerHTML = '▲';
+        btnUp.style = buttonStyle;
+        btnUp.onclick = () => adjustCameraPosition(0, 1);
+        
+        const btnEmpty2 = document.createElement('button');
+        btnEmpty2.style = buttonStyle;
+        btnEmpty2.style.visibility = 'hidden';
+        
+        // Middle row
+        const btnLeft = document.createElement('button');
+        btnLeft.innerHTML = '◀';
+        btnLeft.style = buttonStyle;
+        btnLeft.onclick = () => adjustCameraPosition(-1, 0);
+        
+        const btnReset = document.createElement('button');
+        btnReset.innerHTML = '⌂';
+        btnReset.style = buttonStyle;
+        btnReset.onclick = resetCameraPosition;
+        
+        const btnRight = document.createElement('button');
+        btnRight.innerHTML = '▶';
+        btnRight.style = buttonStyle;
+        btnRight.onclick = () => adjustCameraPosition(1, 0);
+        
+        // Bottom row
+        const btnEmpty3 = document.createElement('button');
+        btnEmpty3.style = buttonStyle;
+        btnEmpty3.style.visibility = 'hidden';
+        
+        const btnDown = document.createElement('button');
+        btnDown.innerHTML = '▼';
+        btnDown.style = buttonStyle;
+        btnDown.onclick = () => adjustCameraPosition(0, -1);
+        
+        const btnEmpty4 = document.createElement('button');
+        btnEmpty4.style = buttonStyle;
+        btnEmpty4.style.visibility = 'hidden';
+        
+        // Add all buttons to the grid
+        controlGrid.appendChild(btnEmpty1);
+        controlGrid.appendChild(btnUp);
+        controlGrid.appendChild(btnEmpty2);
+        
+        controlGrid.appendChild(btnLeft);
+        controlGrid.appendChild(btnReset);
+        controlGrid.appendChild(btnRight);
+        
+        controlGrid.appendChild(btnEmpty3);
+        controlGrid.appendChild(btnDown);
+        controlGrid.appendChild(btnEmpty4);
+        
+        cameraControlPanel.appendChild(controlGrid);
+        
+        // Add step size control
+        const stepControl = document.createElement('div');
+        stepControl.style.marginTop = '10px';
+        stepControl.style.width = '100%';
+        stepControl.style.textAlign = 'center';
+        
+        const stepLabel = document.createElement('label');
+        stepLabel.textContent = 'Step Size:';
+        stepLabel.style.display = 'block';
+        stepLabel.style.marginBottom = '5px';
+        stepLabel.style.fontSize = '12px';
+        stepControl.appendChild(stepLabel);
+        
+        const stepSelect = document.createElement('select');
+        stepSelect.style.width = '100%';
+        stepSelect.style.backgroundColor = '#333';
+        stepSelect.style.color = 'white';
+        stepSelect.style.border = 'none';
+        stepSelect.style.padding = '3px';
+        
+        [0.1, 0.25, 0.5, 1.0].forEach(step => {
+            const option = document.createElement('option');
+            option.value = step;
+            option.textContent = step;
+            if (step === cameraAdjustStep) {
+                option.selected = true;
+            }
+            stepSelect.appendChild(option);
+        });
+        
+        stepSelect.onchange = (e) => {
+            window.cameraAdjustStep = parseFloat(e.target.value);
+            showStatus(`Camera step size set to ${window.cameraAdjustStep}`);
+        };
+        
+        stepControl.appendChild(stepSelect);
+        cameraControlPanel.appendChild(stepControl);
+        
+        // Add keyboard instructions
+        const keyboardHelp = document.createElement('div');
+        keyboardHelp.style.marginTop = '10px';
+        keyboardHelp.style.fontSize = '11px';
+        keyboardHelp.style.color = '#aaa';
+        keyboardHelp.textContent = 'Use arrow keys to adjust camera position';
+        cameraControlPanel.appendChild(keyboardHelp);
+        
+        // Add to document
+        document.body.appendChild(cameraControlPanel);
+        
+        // Add keyboard controls
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case 'ArrowUp':
+                    adjustCameraPosition(0, 1);
+                    break;
+                case 'ArrowDown':
+                    adjustCameraPosition(0, -1);
+                    break;
+                case 'ArrowLeft':
+                    adjustCameraPosition(-1, 0);
+                    break;
+                case 'ArrowRight':
+                    adjustCameraPosition(1, 0);
+                    break;
+                case 'Home':
+                    resetCameraPosition();
+                    break;
+            }
+        });
+        
+        return cameraControlPanel;
     }
     
     // Create and set up the scene

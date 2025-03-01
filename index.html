@@ -126,6 +126,25 @@
             background-color: #7f8c8d;
             cursor: not-allowed;
         }
+        
+        /* Add responsive styles for camera controls on mobile */
+        @media (max-width: 768px) {
+            #cameraControlPanel {
+                left: 5px !important;
+                top: 5px !important;
+                transform: scale(0.8);
+                transform-origin: top left;
+            }
+        }
+        
+        /* Button hover effects for camera controls */
+        #cameraControlPanel button:hover {
+            background-color: #666 !important;
+        }
+        
+        #cameraControlPanel button:active {
+            background-color: #888 !important;
+        }
     </style>
     <!-- BabylonJS and loaders -->
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
@@ -177,6 +196,9 @@
     
     <div id="statusBar">
         <span id="statusMessage">Loading...</span>
+        <span id="keyboardHint" style="font-size: 11px; margin-left: 10px; color: #999;">
+            Arrow keys: Move camera | Home: Reset position
+        </span>
     </div>
     
     <script src="js/SpriteSheetHelper.js"></script>
