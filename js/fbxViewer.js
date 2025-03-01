@@ -418,9 +418,10 @@ document.addEventListener('DOMContentLoaded', function() {
         frameCount = 0;
         isRecording = true;
         
-        // Restart the animation for a clean recording
+        // Restart the animation for a clean recording and ensure we're at the beginning
         currentAnimationGroup.stop();
-        currentAnimationGroup.start(true);
+        currentAnimationGroup.reset(); // Reset to start position
+        currentAnimationGroup.start(true); // Loop animation
         
         showStatus(`Recording sprite sheet: frame 0/${totalFramesToCapture}`);
         
@@ -428,65 +429,147 @@ document.addEventListener('DOMContentLoaded', function() {
         recordBtn.disabled = true;
         recordBtn.textContent = "Recording...";
         
-        // Start the recording loop
-        recordingLoop();
+        // Start the recording loop with a slight delay to ensure animation is ready
+        setTimeout(() => {
+            recordingLoop();
+        }, 100);
     }
     
-    function captureFrame() {
-        // Only capture if we're recording and have an active animation
-        if (!isRecording || !currentAnimationGroup) return;
-        
-        // Update status every few frames
-        if (frameCount % 5 === 0) {
-            showStatus(`Recording sprite sheet: frame ${frameCount}/${totalFramesToCapture}`);
-        }
-        
-        // Get desired cell dimensions from inputs
-        const cellWidth = parseInt(cellWidthInput.value) || 256;
-        const cellHeight = parseInt(cellHeightInput.value) || 256;
-        
-        // Ensure the scene uses transparent background during capture
-        scene.clearColor = new BABYLON.Color4(0, 0, 0, 0);
-        
-        // Use the correct method for capturing screenshots in BabylonJS
-        BABYLON.Tools.CreateScreenshot(engine, camera, {
-            width: cellWidth,
-            height: cellHeight,
-            precision: 1
-        }, function(data) {
-            // Store the image data
-            const img = new Image();
-            img.src = data;
-            img.onload = function() {
-                recordedFrames.push(img);
-                
-                // Check if we've captured all frames
-                frameCount++;
-                if (frameCount >= totalFramesToCapture) {
-                    isRecording = false;
-                    createSpriteSheet();
-                }
-            };
-        });
-    }
-    
-    // Add a slight delay between frames to ensure animation cycles properly
+    // Update the recordingLoop function to ensure proper frame timing
     async function recordingLoop() {
-        if (!isRecording) return;
+        if (!isRecording || !currentAnimationGroup) return;
         
         // Capture the current frame
         captureFrame();
         
         // Wait for animation to advance
         if (frameCount < totalFramesToCapture) {
-            // Calculate delay based on animation speed
-            let animationSpeed = currentAnimationGroup ? 
-                (currentAnimationGroup.speedRatio || 1.0) : 1.0;
-            let delay = 1000 / (30 * animationSpeed); // Assume 30fps animation
+            // Calculate delay based on animation speed and length
+            const animSpeed = currentAnimationGroup.speedRatio || 1.0;
+            const animTotalFrames = currentAnimationGroup.to - currentAnimationGroup.from;
             
-            // Use setTimeout for more reliable frame timing
+            // Calculate how many animation frames to advance per sprite frame
+            const framesPerCapture = animTotalFrames / totalFramesToCapture;
+            
+            // Calculate delay needed based on animation speed
+            // Use a more precise timing method to ensure consistent frames
+            const delay = (1000 / 30) * framesPerCapture / animSpeed;
+            
+            // Use setTimeout for next frame
             setTimeout(recordingLoop, delay);
         }
+    }
+    
+    // Update captureFrame to include better error handling and ensure proper image loading
+    function captureFrame() {
+        if (!isRecording || !currentAnimationGroup) return;
+        
+        try {
+            // Update status every few frames
+            if (frameCount % 5 === 0) {
+                showStatus(`Recording sprite sheet: frame ${frameCount}/${totalFramesToCapture}`);
+            }
+            
+            // Get desired cell dimensions from inputs
+            const cellWidth = parseInt(cellWidthInput.value) || 256;
+            const cellHeight = parseInt(cellHeightInput.value) || 256;
+            
+            // Force transparent background during capture
+            scene.clearColor = new BABYLON.Color4(0, 0, 0, 0);
+            
+            // Take the screenshot
+            BABYLON.Tools.CreateScreenshot(engine, camera, {
+                width: cellWidth,
+                height: cellHeight,
+                precision: 1
+            }, function(data) {
+                if (!data || data.length < 100) {
+                    // Something went wrong with the capture
+                    console.error("Invalid screenshot data received");
+                    captureRetry();
+                    return;
+                }
+                
+                // Store the image data with proper loading handling
+                const img = new Image();
+                img.onload = function() {
+                    recordedFrames.push(img);
+                    
+                    // Check if we've captured all frames
+                    frameCount++;
+                    showStatus(`Recording sprite sheet: frame ${frameCount}/${totalFramesToCapture}`);
+                    
+                    if (frameCount >= totalFramesToCapture) {
+                        finishRecording();
+                    }
+                };
+                
+                img.onerror = function(err) {
+                    console.error("Error loading captured frame:", err);
+                    captureRetry();
+                };
+                
+                // Set the source after attaching event handlers
+                img.src = data;
+            });
+        } catch (err) {
+            console.error("Error in captureFrame:", err);
+            captureRetry();
+        }
+    }
+    
+    // Add a retry mechanism for failed captures
+    function captureRetry() {
+        // If too many retries, abort
+        if (frameCount > totalFramesToCapture * 1.5) {
+            showStatus("Too many retries, aborting recording", true);
+            finishRecording(true);
+            return;
+        }
+        
+        // Try again after a short delay
+        setTimeout(() => {
+            if (isRecording) {
+                captureFrame();
+            }
+        }, 200);
+    }
+    
+    // Add a proper finish function to ensure complete recording
+    function finishRecording(hasError = false) {
+        isRecording = false;
+        
+        if (hasError) {
+            // Handle error case
+            recordBtn.disabled = false;
+            recordBtn.textContent = "Record Sprite Sheet";
+            return;
+        }
+        
+        // Validate we have all frames
+        if (recordedFrames.length !== totalFramesToCapture) {
+            showStatus(`Warning: Captured ${recordedFrames.length} frames instead of ${totalFramesToCapture}`, true);
+        }
+        
+        // Create the sprite sheet
+        if (recordedFrames.length > 0) {
+            showStatus(`Creating sprite sheet with ${recordedFrames.length} frames...`);
+            createSpriteSheet();
+        } else {
+            showStatus("Failed to capture any frames", true);
+            recordBtn.disabled = false;
+            recordBtn.textContent = "Record Sprite Sheet";
+        }
+    }
+    
+    // Add this helper function at the bottom of the file to improve animation timing
+    function getAnimationFrameRate(animGroup) {
+        // Try to determine the animation frame rate
+        if (animGroup && animGroup.animatables.length > 0) {
+            const anim = animGroup.animatables[0].animations[0];
+            if (anim) return anim.framePerSecond || 30;
+        }
+        return 30; // Default to 30fps if not determinable
     }
     
     /**

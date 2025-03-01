@@ -1,7 +1,7 @@
 {
   "frameWidth": 256,
   "frameHeight": 256,
-  "frames": 16,
+  "frames": 64,
   "columns": 4,
   "rows": 4,
   "animationName": "character_walk",
