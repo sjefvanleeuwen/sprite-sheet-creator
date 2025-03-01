@@ -550,100 +550,105 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
     
-    // Replace the createSpriteSheet function with this optimized version
+    // Modify createSpriteSheet function to respect exact cell dimensions from user input
+
     function createSpriteSheet() {
-        showStatus("Creating sprite sheet with optimized spacing...");
+        showStatus("Creating sprite sheet with exact dimensions...");
         
         // Get parameters
         const numFrames = recordedFrames.length;
-        let numColumns = parseInt(columnsInput.value) || 4;
-        if (numColumns < 1) numColumns = 4;
+        const numColumns = parseInt(columnsInput.value) || 4;
+        const numRows = Math.ceil(numFrames / numColumns);
         
-        // Get cell size parameters
+        // Get exact cell dimensions from user input
         const cellWidth = parseInt(cellWidthInput.value) || 256;
         const cellHeight = parseInt(cellHeightInput.value) || 256;
         
-        // Calculate rows needed
-        const numRows = Math.ceil(numFrames / numColumns);
+        // Check if optimization is enabled
+        const shouldOptimize = document.getElementById('optimizeInput').checked;
         
-        // Analyze each frame to find content bounds
-        const frameBounds = recordedFrames.map(frame => analyzeFrameContent(frame));
-        
-        // Find maximum content dimensions to use as frame size
-        let maxContentWidth = 0;
-        let maxContentHeight = 0;
-        
-        frameBounds.forEach(bounds => {
-            maxContentWidth = Math.max(maxContentWidth, bounds.width);
-            maxContentHeight = Math.max(maxContentHeight, bounds.height);
-        });
-        
-        // Add a small padding between frames
-        const framePadding = 2;
-        const frameWidth = maxContentWidth + framePadding * 2;
-        const frameHeight = maxContentHeight + framePadding * 2;
-        
-        // Set the capture canvas size
-        captureCanvas.width = frameWidth * numColumns;
-        captureCanvas.height = frameHeight * numRows;
+        // Set the capture canvas size for the entire sprite sheet
+        // Use exact dimensions based on user input
+        captureCanvas.width = cellWidth * numColumns;
+        captureCanvas.height = cellHeight * numRows;
         
         // Clear the canvas with transparent background
         captureContext.clearRect(0, 0, captureCanvas.width, captureCanvas.height);
         
-        // Draw each frame onto the sprite sheet with centered content
-        for (let i = 0; i < numFrames; i++) {
-            const row = Math.floor(i / numColumns);
-            const col = i % numColumns;
+        if (shouldOptimize) {
+            // With optimization: analyze frames but maintain exact cell size
+            const frameBounds = recordedFrames.map(frame => analyzeFrameContent(frame));
             
-            // Calculate target position on sprite sheet
-            const targetX = col * frameWidth;
-            const targetY = row * frameHeight;
-            
-            // Get the frame and its bounds
-            const frame = recordedFrames[i];
-            const bounds = frameBounds[i];
-            
-            // Calculate centering offsets
-            const offsetX = Math.floor((frameWidth - bounds.width) / 2);
-            const offsetY = Math.floor((frameHeight - bounds.height) / 2);
-            
-            // Draw the content portion of the frame centered in its cell
-            captureContext.drawImage(
-                frame,
-                bounds.left, bounds.top, bounds.width, bounds.height,
-                targetX + offsetX, targetY + offsetY, bounds.width, bounds.height
-            );
-            
-            // Optional: Draw frame borders for debugging
-            // captureContext.strokeStyle = 'rgba(0, 255, 0, 0.5)';
-            // captureContext.strokeRect(targetX, targetY, frameWidth, frameHeight);
+            for (let i = 0; i < numFrames; i++) {
+                const row = Math.floor(i / numColumns);
+                const col = i % numColumns;
+                
+                // Calculate target position on sprite sheet using exact cell dimensions
+                const targetX = col * cellWidth;
+                const targetY = row * cellHeight;
+                
+                const frame = recordedFrames[i];
+                const bounds = frameBounds[i];
+                
+                // Calculate centering offsets within the fixed cell
+                const offsetX = Math.floor((cellWidth - bounds.width) / 2);
+                const offsetY = Math.floor((cellHeight - bounds.height) / 2);
+                
+                // Draw the content portion of the frame centered in its fixed-size cell
+                captureContext.drawImage(
+                    frame,
+                    bounds.left, bounds.top, bounds.width, bounds.height,
+                    targetX + offsetX, targetY + offsetY, bounds.width, bounds.height
+                );
+                
+                // Draw cell borders for visualization (optional)
+                // captureContext.strokeStyle = 'rgba(255, 0, 0, 0.3)';
+                // captureContext.strokeRect(targetX, targetY, cellWidth, cellHeight);
+            }
+        } else {
+            // Without optimization: just place each frame directly in a cell of exact size
+            for (let i = 0; i < numFrames; i++) {
+                const row = Math.floor(i / numColumns);
+                const col = i % numColumns;
+                
+                // Calculate target position based on exact cell dimensions
+                const targetX = col * cellWidth;
+                const targetY = row * cellHeight;
+                
+                // Draw the full frame scaled to fit the exact cell dimensions
+                captureContext.drawImage(
+                    recordedFrames[i],
+                    0, 0, recordedFrames[i].width, recordedFrames[i].height,
+                    targetX, targetY, cellWidth, cellHeight
+                );
+            }
         }
         
-        // Save sprite sheet metadata for later use
+        // Update the metadata to reflect exact cell dimensions
         const metadata = {
-            frameWidth: frameWidth,
-            frameHeight: frameHeight,
-            cellWidth: cellWidth,
-            cellHeight: cellHeight,
+            frameWidth: cellWidth,
+            frameHeight: cellHeight,
             frames: numFrames,
             columns: numColumns,
             rows: numRows,
-            animationName: currentAnimationGroup.name,
-            padding: framePadding,
-            optimized: true,
-            cropData: {
-                left: frameBounds[0].left,
-                top: frameBounds[0].top,
-                width: maxContentWidth,
-                height: maxContentHeight
-            }
+            animationName: currentAnimationGroup.name.replace(/[^\w\s-]/g, '_'),  // Sanitize for filename
+            optimized: shouldOptimize,
+            date: new Date().toISOString()
         };
+        
+        // If optimized, add optimization data
+        if (shouldOptimize) {
+            metadata.optimizationInfo = {
+                note: "Frames are centered within fixed-size cells",
+                maintainsExactDimensions: true
+            };
+        }
         
         // Create downloadable sprite sheet image
         const dataURL = captureCanvas.toDataURL('image/png');
         const downloadLink = document.createElement('a');
         downloadLink.href = dataURL;
-        downloadLink.download = `${currentAnimationGroup.name}_spritesheet.png`;
+        downloadLink.download = `${currentAnimationGroup.name.replace(/[^\w\s-]/g, '_')}_spritesheet.png`;
         document.body.appendChild(downloadLink);
         downloadLink.click();
         document.body.removeChild(downloadLink);
@@ -653,7 +658,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const metadataURL = URL.createObjectURL(metadataBlob);
         const metadataLink = document.createElement('a');
         metadataLink.href = metadataURL;
-        metadataLink.download = `${currentAnimationGroup.name}_metadata.json`;
+        metadataLink.download = `${currentAnimationGroup.name.replace(/[^\w\s-]/g, '_')}_metadata.json`;
         document.body.appendChild(metadataLink);
         metadataLink.click();
         document.body.removeChild(metadataLink);
@@ -663,7 +668,8 @@ document.addEventListener('DOMContentLoaded', function() {
         recordBtn.disabled = false;
         recordBtn.textContent = "Record Sprite Sheet";
         
-        showStatus(`Optimized sprite sheet created with ${numFrames} frames - Size: ${frameWidth}x${frameHeight} pixels per frame`);
+        // Update status message with exact dimensions used
+        showStatus(`Sprite sheet created with ${numFrames} frames - Exact cell size: ${cellWidth}x${cellHeight}px`);
     }
     
     // Create and set up the scene

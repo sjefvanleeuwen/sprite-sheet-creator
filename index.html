@@ -145,24 +145,24 @@
         <!-- Add cell size inputs -->
         <div style="display: flex; gap: 5px; margin-top: 5px;">
             <div style="flex: 1;">
-                <label for="cellWidthInput">Cell Width:</label>
-                <input type="number" id="cellWidthInput" min="32" max="512" value="256" style="width: 100%;">
+                <label for="cellWidthInput">Cell Width (px):</label>
+                <input type="number" id="cellWidthInput" min="32" max="1024" value="256" style="width: 100%;">
             </div>
             <div style="flex: 1;">
-                <label for="cellHeightInput">Cell Height:</label>
-                <input type="number" id="cellHeightInput" min="32" max="512" value="256" style="width: 100%;">
+                <label for="cellHeightInput">Cell Height (px):</label>
+                <input type="number" id="cellHeightInput" min="32" max="1024" value="256" style="width: 100%;">
             </div>
         </div>
         
         <!-- Existing optimization toggle -->
         <div style="display: flex; align-items: center; margin-top: 5px;">
             <input type="checkbox" id="optimizeInput" checked style="width: auto; margin-right: 5px;">
-            <label for="optimizeInput">Optimize frame spacing</label>
+            <label for="optimizeInput">Center content (maintain exact cell size)</label>
         </div>
         
         <button id="recordBtn">Record Sprite Sheet</button>
         <div style="font-size: 11px; margin-top: 8px; color: #aaa;">
-            Set custom cell dimensions for precise control over sprite size
+            Cell dimensions will be exactly as specified. Content will be centered within cells if optimization is enabled.
         </div>
     </div>
     
