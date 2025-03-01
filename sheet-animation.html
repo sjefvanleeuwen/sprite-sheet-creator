@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sprite Sheet Animation Viewer</title>
+    <title>Sprite Sheet Animation Viewer & GIF Exporter</title>
     <style>
         body {
             background-color: #222;
@@ -121,11 +121,87 @@
             font-size: 18px;
             width: 30px;
         }
+        
+        .export-panel {
+            margin-top: 20px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            padding: 15px;
+        }
+        
+        .export-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .export-options label {
+            display: flex;
+            align-items: center;
+            margin-right: 15px;
+            color: #ddd;
+            font-size: 14px;
+        }
+        
+        .export-options input {
+            margin-right: 5px;
+        }
+        
+        #export-btn {
+            background-color: #e74c3c;
+            margin-top: 10px;
+        }
+        
+        #export-btn:hover {
+            background-color: #c0392b;
+        }
+        
+        .progress-container {
+            margin-top: 10px;
+            background-color: #222;
+            border-radius: 4px;
+            height: 8px;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background-color: #2ecc71;
+            transition: width 0.2s;
+        }
+        
+        #export-status {
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 5px;
+        }
+        
+        .gif-output {
+            margin-top: 15px;
+            border: 1px solid #444;
+            padding: 10px;
+            text-align: center;
+            display: none;
+        }
+        
+        #gif-preview {
+            max-width: 100%;
+            max-height: 300px;
+            margin-bottom: 10px;
+        }
+        
+        .download-btn {
+            background-color: #27ae60;
+        }
     </style>
+    <!-- Include gif.js library for GIF generation -->
+    <script src="https://cdn.jsdelivr.net/gh/jnordberg/gif.js@0.2.0/dist/gif.js"></script>
 </head>
 <body>
     <div class="container">
-        <h1>Sprite Sheet Animation Viewer</h1>
+        <h1>Sprite Sheet Animation Viewer & GIF Exporter</h1>
         
         <div class="controls">
             <button id="play-btn">▶️ Play</button>
@@ -147,6 +223,44 @@
             <button class="zoom-btn" id="zoom-out">-</button>
             <span id="zoom-level">1x</span>
             <button class="zoom-btn" id="zoom-in">+</button>
+        </div>
+        
+        <div class="export-panel">
+            <h3>Export Animation as GIF</h3>
+            
+            <div class="export-options">
+                <label>
+                    <input type="checkbox" id="export-loop" checked>
+                    Loop animation
+                </label>
+                
+                <label>
+                    <input type="number" id="export-fps" value="24" min="1" max="60" style="width: 40px;">
+                    FPS
+                </label>
+                
+                <label>
+                    <input type="number" id="export-scale" value="1" min="0.1" max="2" step="0.1" style="width: 40px;">
+                    Scale
+                </label>
+                
+                <label>
+                    <input type="number" id="export-quality" value="10" min="1" max="20" style="width: 40px;">
+                    Quality
+                </label>
+            </div>
+            
+            <button id="export-btn">Generate GIF</button>
+            
+            <div class="progress-container">
+                <div class="progress-bar" id="export-progress"></div>
+            </div>
+            <div id="export-status">Ready to export</div>
+            
+            <div class="gif-output">
+                <img id="gif-preview" alt="GIF Preview">
+                <button id="download-gif-btn" class="download-btn">Download GIF</button>
+            </div>
         </div>
         
         <div class="info-panel">
@@ -324,13 +438,102 @@
                     this.drawFrame(this.currentFrame);
                 }
             }
+            
+            // Add methods for GIF export
+            getFrameForExport(frameIndex) {
+                if (!this.spriteSheet || !this.metadata) return null;
+                
+                const tmpCanvas = document.createElement('canvas');
+                const tmpCtx = tmpCanvas.getContext('2d');
+                
+                // Set the canvas to the frame size
+                tmpCanvas.width = this.metadata.frameWidth;
+                tmpCanvas.height = this.metadata.frameHeight;
+                
+                // Draw the specified frame
+                const col = frameIndex % this.metadata.columns;
+                const row = Math.floor(frameIndex / this.metadata.columns);
+                
+                const sourceX = col * this.metadata.frameWidth;
+                const sourceY = row * this.metadata.frameHeight;
+                
+                tmpCtx.clearRect(0, 0, tmpCanvas.width, tmpCanvas.height);
+                tmpCtx.drawImage(
+                    this.spriteSheet,
+                    sourceX, sourceY, this.metadata.frameWidth, this.metadata.frameHeight,
+                    0, 0, tmpCanvas.width, tmpCanvas.height
+                );
+                
+                return tmpCanvas;
+            }
+            
+            exportToGIF(options = {}) {
+                if (!this.spriteSheet || !this.metadata) {
+                    return Promise.reject(new Error('No sprite sheet loaded'));
+                }
+                
+                return new Promise((resolve, reject) => {
+                    const fps = options.fps || this.fps;
+                    const scale = options.scale || 1;
+                    const loop = options.loop !== undefined ? options.loop : true;
+                    const quality = options.quality || 10;
+                    const onProgress = options.onProgress || (() => {});
+                    
+                    // Create a GIF encoder with the proper dimensions
+                    const gif = new GIF({
+                        workers: 4,
+                        quality: quality,
+                        width: this.metadata.frameWidth * scale,
+                        height: this.metadata.frameHeight * scale,
+                        workerScript: 'js/gif.worker.js',
+                        transparent: 'rgba(0,0,0,0)'
+                    });
+                    
+                    // Add each frame to the GIF
+                    for (let i = 0; i < this.metadata.frames; i++) {
+                        const frameCanvas = this.getFrameForExport(i);
+                        
+                        // If we want to scale the frames
+                        if (scale !== 1) {
+                            const scaledCanvas = document.createElement('canvas');
+                            scaledCanvas.width = this.metadata.frameWidth * scale;
+                            scaledCanvas.height = this.metadata.frameHeight * scale;
+                            const ctx = scaledCanvas.getContext('2d');
+                            ctx.drawImage(
+                                frameCanvas, 
+                                0, 0, frameCanvas.width, frameCanvas.height,
+                                0, 0, scaledCanvas.width, scaledCanvas.height
+                            );
+                            gif.addFrame(scaledCanvas, {delay: 1000 / fps, copy: true});
+                        } else {
+                            gif.addFrame(frameCanvas, {delay: 1000 / fps, copy: true});
+                        }
+                        
+                        // Report progress
+                        onProgress((i + 1) / this.metadata.frames);
+                    }
+                    
+                    // Set up event listeners
+                    gif.on('progress', progress => {
+                        onProgress(progress); // Forward progress updates
+                    });
+                    
+                    gif.on('finished', blob => {
+                        resolve(blob); // Return the GIF blob
+                    });
+                    
+                    // Start rendering the GIF
+                    gif.render();
+                });
+            }
         }
         
         // Initialize the player when the page loads
         document.addEventListener('DOMContentLoaded', () => {
             const player = new SpriteSheetPlayer('animation-canvas');
+            let exportBlob = null;
             
-            // Set up event listeners
+            // Set up animation control event listeners
             document.getElementById('play-btn').addEventListener('click', () => {
                 player.play();
             });
@@ -343,6 +546,7 @@
                 const fps = parseInt(e.target.value);
                 player.setFPS(fps);
                 document.getElementById('speed-value').textContent = `${fps} FPS`;
+                document.getElementById('export-fps').value = fps; // Sync with export FPS
             });
             
             document.getElementById('zoom-in').addEventListener('click', () => {
@@ -362,16 +566,94 @@
                 player.loadSpriteSheet(imgPath, jsonPath)
                     .then(() => {
                         console.log("Sprite sheet loaded successfully");
+                        resetGifExport(); // Reset GIF export state
                     })
                     .catch(error => {
                         console.error("Error loading sprite sheet:", error);
                     });
             });
             
+            // GIF export button handler
+            document.getElementById('export-btn').addEventListener('click', () => {
+                // Get export options
+                const fps = parseInt(document.getElementById('export-fps').value) || 24;
+                const scale = parseFloat(document.getElementById('export-scale').value) || 1;
+                const loop = document.getElementById('export-loop').checked;
+                const quality = parseInt(document.getElementById('export-quality').value) || 10;
+                
+                // Update status
+                document.getElementById('export-status').textContent = 'Starting GIF creation...';
+                document.getElementById('export-progress').style.width = '0%';
+                document.getElementById('export-btn').disabled = true;
+                
+                // Export to GIF
+                player.exportToGIF({
+                    fps: fps,
+                    scale: scale,
+                    loop: loop,
+                    quality: quality,
+                    onProgress: (progress) => {
+                        document.getElementById('export-progress').style.width = `${Math.floor(progress * 100)}%`;
+                        document.getElementById('export-status').textContent = 
+                            `Creating GIF: ${Math.floor(progress * 100)}%`;
+                    }
+                }).then(blob => {
+                    exportBlob = blob;
+                    
+                    // Show GIF preview
+                    const gifPreview = document.getElementById('gif-preview');
+                    gifPreview.src = URL.createObjectURL(blob);
+                    document.querySelector('.gif-output').style.display = 'block';
+                    
+                    document.getElementById('export-status').textContent = 
+                        `GIF created successfully! Size: ${formatFileSize(blob.size)}`;
+                    document.getElementById('export-btn').disabled = false;
+                })
+                .catch(err => {
+                    console.error('GIF export error:', err);
+                    document.getElementById('export-status').textContent = `Error: ${err.message}`;
+                    document.getElementById('export-btn').disabled = false;
+                });
+            });
+            
+            // Download GIF button handler
+            document.getElementById('download-gif-btn').addEventListener('click', () => {
+                if (!exportBlob) return;
+                
+                const fileName = `${player.metadata?.animationName || 'animation'}_${document.getElementById('export-fps').value}fps.gif`;
+                
+                const downloadLink = document.createElement('a');
+                downloadLink.href = URL.createObjectURL(exportBlob);
+                downloadLink.download = fileName;
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+            });
+            
+            // Function to reset GIF export state
+            function resetGifExport() {
+                document.getElementById('export-status').textContent = 'Ready to export';
+                document.getElementById('export-progress').style.width = '0%';
+                document.getElementById('export-btn').disabled = false;
+                document.querySelector('.gif-output').style.display = 'none';
+                exportBlob = null;
+            }
+            
+            // Helper function to format file size
+            function formatFileSize(bytes) {
+                if (bytes < 1024) return bytes + ' B';
+                else if (bytes < 1048576) return (bytes / 1024).toFixed(2) + ' KB';
+                else return (bytes / 1048576).toFixed(2) + ' MB';
+            }
+            
             // Try to load the default sprite sheet when the page loads
             player.loadSpriteSheet("sprites/character.png", "sprites/character.json")
                 .then(() => {
                     console.log("Default sprite sheet loaded");
+                    // Set export FPS to match loaded sprite sheet fps or animation fps
+                    if (player.metadata && player.metadata.fps) {
+                        document.getElementById('export-fps').value = player.metadata.fps;
+                    }
                 })
                 .catch(error => {
                     console.log("No default sprite sheet found or error loading it:", error);
