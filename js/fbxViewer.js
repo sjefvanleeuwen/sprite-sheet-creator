@@ -241,6 +241,19 @@ document.addEventListener('DOMContentLoaded', async function() {
             window.currentAnimationGroup.start(true);
         }
 
+        // Update animation list and play first animation
+        if (container.animationGroups.length > 0) {
+            // Store animation groups both locally and globally
+            animationGroups = container.animationGroups;
+            window.animationGroups = animationGroups;
+            
+            // Update the animation list UI
+            populateAnimationList();
+            
+            // Play the first animation
+            playAnimation(0);
+        }
+
         return window.currentCharacter;
     }
 
@@ -425,8 +438,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Rotate 90 degrees so character faces the camera from the side
         character.rotation = new BABYLON.Vector3(0, Math.PI/2, 0);
         
-        // Store animation groups
+        // Store animation groups both locally and globally
         animationGroups = result.animationGroups;
+        window.animationGroups = animationGroups;
         
         // Handle no animations case
         if (animationGroups.length === 0) {
@@ -445,6 +459,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         
         // Populate animation dropdown
         populateAnimationList();
+        
+        // Make sure to play the first animation
+        if (animationGroups.length > 0) {
+            playAnimation(0);
+        }
         
         console.log(`Loaded character with ${animationGroups.length} animations`);
     }
@@ -485,47 +504,67 @@ document.addEventListener('DOMContentLoaded', async function() {
             animationList.appendChild(option);
         });
         
-        // Select the first animation
+        // Select and play the first animation
         if (animationGroups.length > 0) {
+            animationList.value = "0";
             playAnimation(0);
         }
     }
     
     // Play selected animation
     function playAnimation(index) {
-        // Stop current animation if playing
-        if (currentAnimationGroup) {
-            currentAnimationGroup.stop();
+        // Stop all animations first
+        if (scene) {
+            scene.animationGroups.forEach(group => group.stop());
         }
         
         // Play selected animation
         if (index >= 0 && index < animationGroups.length) {
             currentAnimationGroup = animationGroups[index];
-            currentAnimationGroup.start(true); // true for looping
-            showStatus(`Playing animation: ${currentAnimationGroup.name}`);
+            window.currentAnimationGroup = currentAnimationGroup; // Ensure global access
+            if (currentAnimationGroup) {
+                currentAnimationGroup.start(true); // true for looping
+                showStatus(`Playing animation: ${currentAnimationGroup.name}`);
+                // Update dropdown selection to match
+                animationList.value = index.toString();
+            }
         }
     }
     
     // Recording sprite sheet functions
     function startRecording() {
-        if (!currentAnimationGroup) {
-            showStatus("Please play an animation first before recording", true);
+        // Get the currently selected animation
+        const selectedIndex = parseInt(animationList.value);
+        
+        // Ensure we have a valid animation
+        if (!animationGroups || animationGroups.length === 0) {
+            showStatus("No animations available to record", true);
             return;
         }
         
-        // Get parameters from inputs
-        totalFramesToCapture = parseInt(framesInput.value) || 16;
-        if (totalFramesToCapture < 1) totalFramesToCapture = 16;
+        // Force play the selected animation if it's not already playing
+        if (!currentAnimationGroup || currentAnimationGroup !== animationGroups[selectedIndex]) {
+            playAnimation(selectedIndex);
+        }
+        
+        // Double check we have a valid animation now
+        if (!currentAnimationGroup) {
+            showStatus("Failed to start animation for recording", true);
+            return;
+        }
+        
+        // Get parameters from inputs with fallback values
+        totalFramesToCapture = Math.max(1, parseInt(framesInput.value) || 16);
         
         // Reset recording state
         recordedFrames = [];
         frameCount = 0;
         isRecording = true;
         
-        // Restart the animation for a clean recording and ensure we're at the beginning
+        // Restart the animation from the beginning
         currentAnimationGroup.stop();
-        currentAnimationGroup.reset(); // Reset to start position
-        currentAnimationGroup.start(true); // Loop animation
+        currentAnimationGroup.reset();
+        currentAnimationGroup.start(true);
         
         showStatus(`Recording sprite sheet: frame 0/${totalFramesToCapture}`);
         
@@ -533,7 +572,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         recordBtn.disabled = true;
         recordBtn.textContent = "Recording...";
         
-        // Start the recording loop with a slight delay to ensure animation is ready
+        // Start the recording loop
         setTimeout(() => {
             recordingLoop();
         }, 100);
