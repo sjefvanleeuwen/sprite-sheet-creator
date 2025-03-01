@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const recordBtn = document.getElementById('recordBtn');
     const framesInput = document.getElementById('framesInput');
     const columnsInput = document.getElementById('columnsInput');
+    const cellWidthInput = document.getElementById('cellWidthInput');
+    const cellHeightInput = document.getElementById('cellHeightInput');
     
     // Initialize BabylonJS
     const engine = new BABYLON.Engine(canvas, true);
@@ -427,8 +429,16 @@ document.addEventListener('DOMContentLoaded', function() {
             showStatus(`Recording sprite sheet: frame ${frameCount}/${totalFramesToCapture}`);
         }
         
+        // Get desired cell dimensions from inputs
+        const cellWidth = parseInt(cellWidthInput.value) || 256;
+        const cellHeight = parseInt(cellHeightInput.value) || 256;
+        
         // Use the correct method for capturing screenshots in BabylonJS
-        BABYLON.Tools.CreateScreenshot(engine, camera, { width: 512, height: 512 }, function(data) {
+        BABYLON.Tools.CreateScreenshot(engine, camera, {
+            width: cellWidth,
+            height: cellHeight,
+            precision: 1
+        }, function(data) {
             // Store the image data
             const img = new Image();
             img.src = data;
@@ -516,12 +526,15 @@ document.addEventListener('DOMContentLoaded', function() {
             };
         }
         
-        // Add a small margin for better appearance
-        const margin = 5;
-        left = Math.max(0, left - margin);
-        top = Math.max(0, top - margin);
-        right = Math.min(frame.width - 1, right + margin);
-        bottom = Math.min(frame.height - 1, bottom + margin);
+        // Add asymmetric margins - less on bottom, more on sides and top
+        const marginX = Math.ceil(frame.width * 0.025); // 2.5% of width for horizontal margin
+        const marginTopY = Math.ceil(frame.height * 0.025); // 2.5% of height for top margin
+        const marginBottomY = Math.ceil(frame.height * 0.01); // 1% of height for bottom margin
+        
+        left = Math.max(0, left - marginX);
+        top = Math.max(0, top - marginTopY);
+        right = Math.min(frame.width - 1, right + marginX);
+        bottom = Math.min(frame.height - 1, bottom + marginBottomY);
         
         return {
             left: left,
@@ -541,6 +554,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const numFrames = recordedFrames.length;
         let numColumns = parseInt(columnsInput.value) || 4;
         if (numColumns < 1) numColumns = 4;
+        
+        // Get cell size parameters
+        const cellWidth = parseInt(cellWidthInput.value) || 256;
+        const cellHeight = parseInt(cellHeightInput.value) || 256;
         
         // Calculate rows needed
         const numRows = Math.ceil(numFrames / numColumns);
@@ -602,6 +619,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const metadata = {
             frameWidth: frameWidth,
             frameHeight: frameHeight,
+            cellWidth: cellWidth,
+            cellHeight: cellHeight,
             frames: numFrames,
             columns: numColumns,
             rows: numRows,
