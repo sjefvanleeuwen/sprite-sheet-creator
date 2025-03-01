@@ -206,7 +206,15 @@
         <div class="controls">
             <button id="play-btn">▶️ Play</button>
             <button id="pause-btn" disabled>⏸️ Pause</button>
-            <button id="load-btn">📂 Load Sprite Sheet</button>
+            <div class="upload-controls" style="margin: 10px 0;">
+                <input type="file" id="sprite-upload" accept=".png" style="display: none;">
+                <input type="file" id="json-upload" accept=".json" style="display: none;">
+                <button id="upload-btn" style="background-color: #27ae60;">📂 Upload Files</button>
+                <div style="font-size: 12px; color: #aaa; margin-top: 5px;">
+                    <span id="sprite-filename">No sprite sheet selected</span><br>
+                    <span id="json-filename">No JSON metadata selected</span>
+                </div>
+            </div>
         </div>
         
         <div class="speed-control">
@@ -330,6 +338,41 @@
                             reject(new Error("Failed to load sprite sheet image"));
                         };
                         this.spriteSheet.src = imageUrl;
+                    });
+                } catch (error) {
+                    console.error("Error loading sprite sheet:", error);
+                    alert(`Error: ${error.message}`);
+                    throw error;
+                }
+            }
+            
+            async loadFromFiles(imageFile, jsonFile) {
+                try {
+                    // Load and parse the JSON metadata
+                    const jsonText = await jsonFile.text();
+                    this.metadata = JSON.parse(jsonText);
+                    
+                    // Load the sprite sheet image
+                    return new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            this.spriteSheet = new Image();
+                            this.spriteSheet.onload = () => {
+                                this.updateInfoPanel();
+                                this.resizeCanvas(
+                                    this.metadata.frameWidth * this.zoom, 
+                                    this.metadata.frameHeight * this.zoom
+                                );
+                                this.drawFrame(0);
+                                resolve();
+                            };
+                            this.spriteSheet.onerror = () => {
+                                reject(new Error("Failed to load sprite sheet image"));
+                            };
+                            this.spriteSheet.src = e.target.result;
+                        };
+                        reader.onerror = () => reject(new Error("Failed to read image file"));
+                        reader.readAsDataURL(imageFile);
                     });
                 } catch (error) {
                     console.error("Error loading sprite sheet:", error);
@@ -532,6 +575,8 @@
         document.addEventListener('DOMContentLoaded', () => {
             const player = new SpriteSheetPlayer('animation-canvas');
             let exportBlob = null;
+            let selectedSpriteFile = null;
+            let selectedJsonFile = null;
             
             // Set up animation control event listeners
             document.getElementById('play-btn').addEventListener('click', () => {
@@ -557,21 +602,72 @@
                 player.setZoom(player.zoom / 1.5);
             });
             
-            // Load sprite sheet button handler
-            document.getElementById('load-btn').addEventListener('click', () => {
-                const imgPath = "sprites/character.png"; 
-                const jsonPath = "sprites/character.json";
-                
-                // Try to load the default sprite sheet
-                player.loadSpriteSheet(imgPath, jsonPath)
-                    .then(() => {
-                        console.log("Sprite sheet loaded successfully");
-                        resetGifExport(); // Reset GIF export state
-                    })
-                    .catch(error => {
-                        console.error("Error loading sprite sheet:", error);
-                    });
+            // Add new upload button handler
+            document.getElementById('upload-btn').addEventListener('click', () => {
+                if (!selectedSpriteFile || !selectedJsonFile) {
+                    // Create and trigger hidden file inputs
+                    const spriteInput = document.getElementById('sprite-upload');
+                    const jsonInput = document.getElementById('json-upload');
+                    const uploadBtn = document.getElementById('upload-btn');
+                    
+                    if (!selectedSpriteFile) {
+                        uploadBtn.textContent = '📂 Upload Sprite Sheet (.png)';
+                        spriteInput.value = ''; // Reset input before clicking
+                        spriteInput.click();
+                    } else if (!selectedJsonFile) {
+                        uploadBtn.textContent = '📂 Upload Metadata (.json)';
+                        jsonInput.value = ''; // Reset input before clicking
+                        jsonInput.click();
+                    }
+                } else {
+                    // Load the selected files
+                    document.getElementById('upload-btn').textContent = '📂 Upload Files';
+                    player.loadFromFiles(selectedSpriteFile, selectedJsonFile)
+                        .then(() => {
+                            console.log("Files loaded successfully");
+                            resetGifExport();
+                            // Reset file selections after successful load
+                            resetFileInputs();
+                        })
+                        .catch(error => {
+                            console.error("Error loading files:", error);
+                            alert("Error loading files: " + error.message);
+                            // Reset selection on error
+                            resetFileInputs();
+                        });
+                }
             });
+
+            // Handle sprite sheet file selection
+            document.getElementById('sprite-upload').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    selectedSpriteFile = file;
+                    document.getElementById('sprite-filename').textContent = `Sprite: ${file.name}`;
+                    document.getElementById('upload-btn').textContent = '📂 Upload Metadata (.json)';
+                }
+            });
+
+            // Handle JSON file selection
+            document.getElementById('json-upload').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    selectedJsonFile = file;
+                    document.getElementById('json-filename').textContent = `JSON: ${file.name}`;
+                    document.getElementById('upload-btn').textContent = '✅ Load Files';
+                }
+            });
+            
+            // Function to reset all file inputs
+            function resetFileInputs() {
+                selectedSpriteFile = null;
+                selectedJsonFile = null;
+                document.getElementById('sprite-upload').value = '';
+                document.getElementById('json-upload').value = '';
+                document.getElementById('sprite-filename').textContent = 'No sprite sheet selected';
+                document.getElementById('json-filename').textContent = 'No JSON metadata selected';
+                document.getElementById('upload-btn').textContent = '📂 Upload Sprite Sheet (.png)';
+            }
             
             // GIF export button handler
             document.getElementById('export-btn').addEventListener('click', () => {
