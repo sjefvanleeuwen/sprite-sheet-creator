@@ -10,7 +10,7 @@
             margin: 0;
             padding: 0;
             overflow: hidden;
-            background-color: #222;
+            background-color: #333; /* Darker background to show transparency better */
         }
         
         /* Create a container for the canvas that maintains aspect ratio */
@@ -28,7 +28,15 @@
             width: min(100vh, 100vw); /* Take the smaller of viewport height or width */
             height: min(100vh, 100vw); /* Same as width for perfect 1:1 square */
             touch-action: none;
-            background-color: #333;
+            background-color: transparent; /* Make transparent */
+            /* Create a checkerboard pattern to visualize transparency */
+            background-image: 
+                linear-gradient(45deg, #333 25%, transparent 25%), 
+                linear-gradient(-45deg, #333 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #333 75%),
+                linear-gradient(-45deg, transparent 75%, #333 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
         }
         
         /* Optional visual indicator for the square boundary */
@@ -163,6 +171,7 @@
         <button id="recordBtn">Record Sprite Sheet</button>
         <div style="font-size: 11px; margin-top: 8px; color: #aaa;">
             Cell dimensions will be exactly as specified. Content will be centered within cells if optimization is enabled.
+            Background is transparent for clean sprite sheets.
         </div>
     </div>
     

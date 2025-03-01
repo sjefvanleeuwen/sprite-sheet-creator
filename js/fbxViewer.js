@@ -56,7 +56,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const createScene = async function() {
         // Create a basic scene
         scene = new BABYLON.Scene(engine);
-        scene.clearColor = new BABYLON.Color3(0.2, 0.2, 0.3);
+        
+        // Set transparent background by setting alpha to 0
+        scene.clearColor = new BABYLON.Color4(0, 0, 0, 0);
+        
+        // Enable alpha blending (required for transparent backgrounds)
+        engine.setHardwareScalingLevel(1);
+        engine.alpha = true;
+        engine.alphaMode = BABYLON.Engine.ALPHA_COMBINE;
         
         // Add a light
         const light = new BABYLON.HemisphericLight('light', new BABYLON.Vector3(0, 1, 0), scene);
@@ -130,6 +137,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const groundMaterial = new BABYLON.StandardMaterial('groundMat', scene);
         groundMaterial.diffuseColor = new BABYLON.Color3(0.2, 0.2, 0.2);
         groundMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+        groundMaterial.alpha = 0; // Make the ground transparent
         ground.material = groundMaterial;
         ground.position.y = 0;
         
@@ -437,6 +445,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const cellWidth = parseInt(cellWidthInput.value) || 256;
         const cellHeight = parseInt(cellHeightInput.value) || 256;
         
+        // Ensure the scene uses transparent background during capture
+        scene.clearColor = new BABYLON.Color4(0, 0, 0, 0);
+        
         // Use the correct method for capturing screenshots in BabylonJS
         BABYLON.Tools.CreateScreenshot(engine, camera, {
             width: cellWidth,
@@ -553,7 +564,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Modify createSpriteSheet function to respect exact cell dimensions from user input
 
     function createSpriteSheet() {
-        showStatus("Creating sprite sheet with exact dimensions...");
+        showStatus("Creating transparent sprite sheet...");
         
         // Get parameters
         const numFrames = recordedFrames.length;
@@ -633,7 +644,8 @@ document.addEventListener('DOMContentLoaded', function() {
             rows: numRows,
             animationName: currentAnimationGroup.name.replace(/[^\w\s-]/g, '_'),  // Sanitize for filename
             optimized: shouldOptimize,
-            date: new Date().toISOString()
+            date: new Date().toISOString(),
+            transparent: true
         };
         
         // If optimized, add optimization data
