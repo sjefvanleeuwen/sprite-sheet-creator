@@ -2,15 +2,14 @@
   "frameWidth": 256,
   "frameHeight": 256,
   "frames": 64,
-  "columns": 4,
-  "rows": 4,
-  "animationName": "character_walk",
-  "optimized": true,
+  "columns": 8,
+  "rows": 8,
+  "animationName": "Armature_walking_man_baselayer",
+  "optimized": false,
+  "date": "2025-03-01T14:03:20.008Z",
   "transparent": true,
-  "fps": 24,
-  "date": "2023-07-20T12:00:00.000Z",
-  "optimizationInfo": {
-    "note": "Frames are centered within fixed-size cells",
-    "maintainsExactDimensions": true
+  "cameraPosition": {
+    "offsetX": 0,
+    "offsetY": -0.25
   }
 }

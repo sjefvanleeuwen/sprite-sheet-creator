@@ -41,6 +41,16 @@ A comprehensive tool for viewing 3D character models, creating sprite sheets, an
   - Loop/no-loop option
 - Live preview and direct download
 
+## Example Outputs
+
+### Sample Sprite Sheet
+![Example Sprite Sheet](sprites/character.png)
+*Generated sprite sheet with 16 frames arranged in a 4x4 grid.*
+
+### Exported GIF Animation
+![Example Animation](sprites/character.gif)
+*The resulting smooth animation exported as a GIF file.*
+
 ## Getting Started
 
 ### Installation

@@ -1,7 +1,3 @@
-# Ignore model files (may be large)
-models/character.fbx
-models/character.glb
-
 # Node modules if you add npm later
 node_modules/
 
