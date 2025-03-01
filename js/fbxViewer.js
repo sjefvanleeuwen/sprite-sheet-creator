@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     // Get references to HTML elements
     const canvas = document.getElementById('renderCanvas');
     const animationList = document.getElementById('animationList');
@@ -87,8 +87,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Create the scene
     const createScene = async function() {
-        // Create a basic scene
-        scene = new BABYLON.Scene(engine);
+        const scene = new BABYLON.Scene(engine);
+        window.scene = scene; // Make scene globally accessible
         
         // Set transparent background by setting alpha to 0
         scene.clearColor = new BABYLON.Color4(0, 0, 0, 0);
@@ -179,6 +179,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Create camera adjustment UI
         createCameraControls();
+        
+        // Dispatch event when scene is ready
+        window.dispatchEvent(new CustomEvent('sceneReady'));
         
         return scene;
     };
@@ -979,46 +982,62 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Create and set up the scene
-    createScene().then(() => {
-        // Register event listeners
-        playBtn.addEventListener('click', () => {
-            const selectedIndex = parseInt(animationList.value);
-            playAnimation(selectedIndex);
-        });
+    try {
+        scene = await createScene();
         
-        pauseBtn.addEventListener('click', () => {
-            if (currentAnimationGroup) {
-                currentAnimationGroup.pause();
-                showStatus(`Paused animation: ${currentAnimationGroup.name}`);
+        // Only start render loop after scene is created
+        engine.runRenderLoop(() => {
+            if (scene) {
+                scene.render();
             }
         });
-        
-        animationList.addEventListener('change', () => {
-            const selectedIndex = parseInt(animationList.value);
-            playAnimation(selectedIndex);
-        });
-        
-        // Add sprite sheet recording event listener
-        recordBtn.addEventListener('click', startRecording);
-        
-        // Run the render loop with frame capture REMOVED from here
-        engine.runRenderLoop(() => {
-            scene.render();
-            // We'll handle frame capture separately with the recordingLoop function
-        });
-        
+
         // Handle window resize
         window.addEventListener('resize', () => {
-            // Resize the engine
             engine.resize();
-            
-            // Ensure camera maintains square ratio
-            updateOrthoCamera();
-            
-            // Update canvas size to remain square
-            const size = Math.min(window.innerHeight, window.innerWidth);
-            canvas.style.width = `${size}px`;
-            canvas.style.height = `${size}px`;
         });
+    } catch (error) {
+        console.error("Error creating scene:", error);
+    }
+
+    // Register event listeners
+    playBtn.addEventListener('click', () => {
+        const selectedIndex = parseInt(animationList.value);
+        playAnimation(selectedIndex);
+    });
+    
+    pauseBtn.addEventListener('click', () => {
+        if (currentAnimationGroup) {
+            currentAnimationGroup.pause();
+            showStatus(`Paused animation: ${currentAnimationGroup.name}`);
+        }
+    });
+    
+    animationList.addEventListener('change', () => {
+        const selectedIndex = parseInt(animationList.value);
+        playAnimation(selectedIndex);
+    });
+    
+    // Add sprite sheet recording event listener
+    recordBtn.addEventListener('click', startRecording);
+    
+    // Run the render loop with frame capture REMOVED from here
+    engine.runRenderLoop(() => {
+        scene.render();
+        // We'll handle frame capture separately with the recordingLoop function
+    });
+    
+    // Handle window resize
+    window.addEventListener('resize', () => {
+        // Resize the engine
+        engine.resize();
+        
+        // Ensure camera maintains square ratio
+        updateOrthoCamera();
+        
+        // Update canvas size to remain square
+        const size = Math.min(window.innerHeight, window.innerWidth);
+        canvas.style.width = `${size}px`;
+        canvas.style.height = `${size}px`;
     });
 });

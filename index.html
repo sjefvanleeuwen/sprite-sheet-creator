@@ -145,6 +145,33 @@
         #cameraControlPanel button:active {
             background-color: #888 !important;
         }
+        
+        .upload-section {
+            margin: 10px 0;
+            position: relative;
+        }
+        
+        #characterUpload {
+            opacity: 0;
+            width: 0.1px;
+            height: 0.1px;
+            position: absolute;
+        }
+        
+        .upload-label {
+            display: block;
+            padding: 8px 12px;
+            background-color: #4CAF50;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            margin: 5px 0;
+        }
+        
+        .upload-label:hover {
+            background-color: #45a049;
+        }
     </style>
     <!-- BabylonJS and loaders -->
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
@@ -156,6 +183,10 @@
     </div>
     <div id="controlPanel">
         <h3>Animation Controls</h3>
+        <div class="upload-section">
+            <input type="file" id="characterUpload" accept=".glb">
+            <label for="characterUpload" class="upload-label">Upload Character (.glb)</label>
+        </div>
         <select id="animationList"></select>
         <button id="playBtn">Play</button>
         <button id="pauseBtn">Pause</button>
@@ -203,6 +234,7 @@
     
     <script src="js/SpriteSheetHelper.js"></script>
     <script src="js/fbxViewer.js"></script>
+    <script src="characterLoader.js"></script>
     
     <!-- Add compatibility check -->
     <script>
