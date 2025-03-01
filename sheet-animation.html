@@ -741,19 +741,6 @@
                 else if (bytes < 1048576) return (bytes / 1024).toFixed(2) + ' KB';
                 else return (bytes / 1048576).toFixed(2) + ' MB';
             }
-            
-            // Try to load the default sprite sheet when the page loads
-            player.loadSpriteSheet("sprites/character.png", "sprites/character.json")
-                .then(() => {
-                    console.log("Default sprite sheet loaded");
-                    // Set export FPS to match loaded sprite sheet fps or animation fps
-                    if (player.metadata && player.metadata.fps) {
-                        document.getElementById('export-fps').value = player.metadata.fps;
-                    }
-                })
-                .catch(error => {
-                    console.log("No default sprite sheet found or error loading it:", error);
-                });
         });
     </script>
 </body>
