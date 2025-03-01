@@ -41,11 +41,15 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateOrthoCamera() {
         if (!camera) return;
         
-        const aspectRatio = engine.getAspectRatio(camera);
+        // Force a 1:1 square aspect ratio regardless of canvas dimensions
+        camera.mode = BABYLON.Camera.ORTHOGRAPHIC_CAMERA;
+        
+        // Use the same value for both horizontal and vertical dimensions
+        // This ensures a perfect square view
         camera.orthoTop = zoomFactor;
         camera.orthoBottom = -zoomFactor;
-        camera.orthoLeft = -zoomFactor * aspectRatio;
-        camera.orthoRight = zoomFactor * aspectRatio;
+        camera.orthoLeft = -zoomFactor; // Same as vertical for 1:1 ratio
+        camera.orthoRight = zoomFactor;  // Same as vertical for 1:1 ratio
     }
     
     // Create the scene
@@ -693,8 +697,16 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Handle window resize
         window.addEventListener('resize', () => {
+            // Resize the engine
             engine.resize();
-            updateOrthoCamera(); // Update orthographic settings on resize
+            
+            // Ensure camera maintains square ratio
+            updateOrthoCamera();
+            
+            // Update canvas size to remain square
+            const size = Math.min(window.innerHeight, window.innerWidth);
+            canvas.style.width = `${size}px`;
+            canvas.style.height = `${size}px`;
         });
     });
 });
